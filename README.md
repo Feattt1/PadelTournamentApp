@@ -38,3 +38,4 @@ Para inscribir parejas en campeonatos, necesitas:
 - Frontend: Vercel
 - Backend: Vercel Serverless o Railway
 - Base de datos: PlanetScale / Railway / MySQL
+# Padel-App-by-Feat
