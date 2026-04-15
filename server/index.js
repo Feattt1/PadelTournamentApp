@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 import { rateLimit } from 'express-rate-limit';
 
 import authRoutes from './routes/auth.js';
@@ -91,9 +92,10 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-const isVercel = process.env.VERCEL === '1';
+const __filename = fileURLToPath(import.meta.url);
+const isMain = process.argv[1] === __filename;
 
-if (!isVercel) {
+if (isMain) {
   app.listen(PORT, () => {
     console.log(`🚀 Servidor en http://localhost:${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
