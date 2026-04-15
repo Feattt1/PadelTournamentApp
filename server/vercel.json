@@ -1,11 +1,14 @@
 {
   "version": 2,
-  "outputDirectory": ".",
-  "functions": {
-    "api/[...path].js": {
-      "maxDuration": 30
+  "builds": [
+    {
+      "src": "api/[...path].js",
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/(.*)",

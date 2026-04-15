@@ -6,7 +6,7 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "build": "prisma generate && prisma db push",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && node -e \"if(process.env.VERCEL){const {execSync}=require('child_process');execSync('prisma db push --skip-generate',{stdio:'inherit'})}\"",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
