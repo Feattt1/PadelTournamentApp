@@ -20,15 +20,16 @@
   ],
   "routes": [
     {
-      "handle": "filesystem"
-    },
-    {
       "src": "^/api/(.*)$",
       "dest": "/server/index.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "/client/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "/index.html"
     }
   ]
 }
+
