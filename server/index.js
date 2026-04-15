@@ -91,6 +91,12 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor en http://localhost:${PORT} [${process.env.NODE_ENV || 'development'}]`);
-});
+const isVercel = process.env.VERCEL === '1';
+
+if (!isVercel) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor en http://localhost:${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  });
+}
+
+export default app;
