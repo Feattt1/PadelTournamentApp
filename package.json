@@ -1,0 +1,22 @@
+{
+  "name": "padel-championship-manager",
+  "version": "1.0.0",
+  "description": "Gestor de campeonatos de pádel para clubes",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w server && npm run build -w client",
+    "start": "npm run start -w server",
+    "db:generate": "npm run db:generate -w server",
+    "db:push": "npm run db:push -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

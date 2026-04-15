@@ -1,0 +1,309 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN   // plataforma: crea clubes, asigna admins de club
+  JUGADOR
+  PUBLICO
+}
+
+enum EstadoCampeonato {
+  INSCRIPCIONES
+  EN_CURSO
+  FINALIZADO
+}
+
+enum Modalidad {
+  MASCULINO
+  FEMENINO
+  MIXTO
+}
+
+enum EstadoPartido {
+  PENDIENTE
+  EN_JUEGO
+  FINALIZADO
+}
+
+enum FasePartido {
+  GRUPOS
+  CUARTOS
+  SEMIS
+  FINAL
+}
+
+enum TipoFasePista {
+  GRUPOS
+  ELIMINATORIAS
+}
+
+enum TipoPareja {
+  ABIERTO
+  MASCULINO
+  FEMENINO
+}
+
+enum EstadoInscripcion {
+  PENDIENTE
+  ACEPTADA
+  RECHAZADA
+  LISTA_ESPERA
+}
+
+model Club {
+  id        String   @id @default(uuid())
+  nombre    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admins       ClubAdmin[]
+  campeonatos  Campeonato[]
+  jugadores    Jugador[]
+  parejas      Pareja[]
+}
+
+model ClubAdmin {
+  id        String   @id @default(uuid())
+  usuarioId String
+  clubId    String
+  createdAt DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  club    Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, clubId])
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  nombre    String
+  telefono  String?
+  rol       Role     @default(JUGADOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clubsAdmin     ClubAdmin[]
+  jugador        Jugador?
+  notificaciones Notificacion[]
+  campeonatosCreados Campeonato[] @relation("CreadorCampeonato")
+}
+
+model Jugador {
+  id        String   @id @default(uuid())
+  usuarioId String   @unique
+  clubId    String?  // null = jugador global; con club = creado por admin
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  club      Club?    @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  categoria Int      // 1 a 7
+  nivel     String?
+  createdAt DateTime @default(now())
+
+  parejasComoJ1  Pareja[] @relation("Jugador1")
+  parejasComoJ2  Pareja[] @relation("Jugador2")
+}
+
+// Un torneo contiene N categorías (ej: "5ta Masculino", "4ta Femenino")
+model Campeonato {
+  id          String           @id @default(uuid())
+  nombre      String
+  clubId      String?
+  descripcion String?
+  fechaInicio DateTime
+  fechaFin    DateTime
+  fechaInscripcionInicio DateTime?
+  fechaInscripcionFin    DateTime?
+  estado      EstadoCampeonato @default(INSCRIPCIONES)
+  creadorId   String?
+  club        Club?            @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  creador     Usuario?         @relation("CreadorCampeonato", fields: [creadorId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  categorias       CategoriaTorneo[]
+  inscripciones    Inscripcion[]
+  grupos           Grupo[]
+  partidos         Partido[]
+  disponibilidades DisponibilidadHoraria[]
+  pistas           Pista[]
+}
+
+// Cancha física en un torneo
+model Pista {
+  id            String   @id @default(uuid())
+  campeonatoId  String
+  numero        Int      // 1, 2, 3... para Cancha 1, Cancha 2, etc.
+  nombre        String   // "Cancha 1", "Cancha 2"
+  campeonato    Campeonato @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
+  disponibilidades PistaDisponibilidad[]
+
+  @@unique([campeonatoId, numero])
+}
+
+// Categoría dentro de un torneo (ej: categoria=5, modalidad=MASCULINO → "5ta Masculino")
+model CategoriaTorneo {
+  id           String    @id @default(uuid())
+  campeonatoId String
+  categoria    Int       // 1-7
+  modalidad    Modalidad
+  nombre       String?   // nombre personalizado, si null se genera automáticamente
+  maxParejas   Int?
+  campeonato   Campeonato @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
+
+  inscripciones Inscripcion[]
+  grupos        Grupo[]
+
+  @@unique([campeonatoId, categoria, modalidad])
+}
+
+model Pareja {
+  id          String     @id @default(uuid())
+  jugador1Id  String
+  jugador2Id  String
+  clubId      String?
+  nombre      String?
+  tipoPareja  TipoPareja @default(ABIERTO)
+  jugador1   Jugador  @relation("Jugador1", fields: [jugador1Id], references: [id], onDelete: Cascade)
+  jugador2   Jugador  @relation("Jugador2", fields: [jugador2Id], references: [id], onDelete: Cascade)
+  club       Club?    @relation(fields: [clubId], references: [id], onDelete: SetNull)
+
+  inscripciones Inscripcion[]
+  partidosLocal     Partido[] @relation("ParejaLocal")
+  partidosVisitante Partido[] @relation("ParejaVisitante")
+  clasificaciones   ClasificacionGrupo[]
+
+  @@unique([jugador1Id, jugador2Id])
+}
+
+model Inscripcion {
+  id            String    @id @default(uuid())
+  campeonatoId  String
+  categoriaId   String?   // null = torneo legacy sin categorías
+  parejaId      String
+  estado        EstadoInscripcion @default(PENDIENTE)
+  posicionLista Int?
+  fechaInscripcion DateTime @default(now())
+  campeonato    Campeonato       @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
+  categoria     CategoriaTorneo? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  pareja        Pareja     @relation(fields: [parejaId], references: [id], onDelete: Cascade)
+
+  @@unique([campeonatoId, parejaId, categoriaId])
+}
+
+model Grupo {
+  id            String      @id @default(uuid())
+  campeonatoId  String
+  categoriaId   String?
+  nombre        String
+  campeonato    Campeonato       @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
+  categoria     CategoriaTorneo? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  partidos      Partido[]
+  clasificaciones ClasificacionGrupo[]
+}
+
+model Partido {
+  id               String        @id @default(uuid())
+  campeonatoId     String
+  categoriaId      String?
+  grupoId          String?
+  fase             FasePartido   @default(GRUPOS)
+  parejaLocalId    String?
+  parejaVisitanteId String?
+  setsLocal        Int?          // sets ganados por local (ej: 2)
+  setsVisitante    Int?          // sets ganados por visitante (ej: 1)
+  puntosLocal      Int?          // games totales local (legacy / suma de sets)
+  puntosVisitante  Int?
+  fechaHora        DateTime?
+  pista            String?
+  estado           EstadoPartido @default(PENDIENTE)
+  ordenRonda       Int?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  campeonato      Campeonato @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
+  grupo           Grupo?     @relation(fields: [grupoId], references: [id], onDelete: SetNull)
+  parejaLocal     Pareja?    @relation("ParejaLocal", fields: [parejaLocalId], references: [id], onDelete: SetNull)
+  parejaVisitante Pareja?    @relation("ParejaVisitante", fields: [parejaVisitanteId], references: [id], onDelete: SetNull)
+  sets            SetResultado[]
+
+  @@index([campeonatoId, fase])
+  @@index([campeonatoId, estado])
+}
+
+// Resultado detallado por set: ej Set 1 → 6-3, Set 2 → 4-6, Set 3 → 7-5
+model SetResultado {
+  id             String  @id @default(uuid())
+  partidoId      String
+  numeroSet      Int     // 1, 2, 3
+  gamesLocal     Int
+  gamesVisitante Int
+  partido        Partido @relation(fields: [partidoId], references: [id], onDelete: Cascade)
+
+  @@unique([partidoId, numeroSet])
+}
+
+// Franjas de disponibilidad de canchas por día para un torneo
+model DisponibilidadHoraria {
+  id              String     @id @default(uuid())
+  campeonatoId    String
+  fecha           DateTime   @db.Date
+  horaInicio      String     // "09:00"
+  horaFin         String     // "21:00"
+  cantidadCanchas Int        @default(1)
+  duracionMinutos Int        @default(120)
+  campeonato      Campeonato @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
+
+  @@unique([campeonatoId, fecha])
+}
+
+// Disponibilidad por cancha, fecha y tipo de fase (GRUPOS o ELIMINATORIAS)
+model PistaDisponibilidad {
+  id              String    @id @default(uuid())
+  pistaId         String
+  fecha           DateTime  @db.Date
+  tipoFase        TipoFasePista
+  horaInicio      String    // "09:00"
+  horaFin         String    // "21:00"
+  duracionMinutos Int       @default(120)
+  pista           Pista     @relation(fields: [pistaId], references: [id], onDelete: Cascade)
+
+  @@unique([pistaId, fecha, tipoFase])
+}
+
+model ClasificacionGrupo {
+  id        String  @id @default(uuid())
+  grupoId   String
+  parejaId  String
+  puntos    Int     @default(0)
+  partidosJugados Int @default(0)
+  partidosGanados Int @default(0)
+  setsGanados   Int  @default(0)
+  setsPerdidos  Int  @default(0)
+  gamesGanados  Int  @default(0)
+  gamesPerdidos Int  @default(0)
+
+  grupo   Grupo  @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  pareja  Pareja @relation(fields: [parejaId], references: [id], onDelete: Cascade)
+
+  @@unique([grupoId, parejaId])
+}
+
+model Notificacion {
+  id        String   @id @default(uuid())
+  usuarioId String
+  titulo    String
+  mensaje   String
+  tipo      String   // PARTIDO, RESULTADO, SORTEO
+  leida     Boolean  @default(false)
+  data      String?  // JSON con datos adicionales
+  createdAt DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
