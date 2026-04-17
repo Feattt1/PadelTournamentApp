@@ -2,9 +2,10 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const ClubContext = createContext(null);
 const CLUB_KEY = 'padel_club';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 async function fetchClubs() {
-  const res = await fetch('/api/clubs');
+  const res = await fetch(`${API_URL}/clubs`);
   if (res.ok) return res.json();
   const data = await res.json().catch(() => ({}));
   throw new Error(data.error || `Error ${res.status} al cargar clubes`);
