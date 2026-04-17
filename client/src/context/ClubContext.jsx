@@ -40,8 +40,8 @@ export function ClubProvider({ children }) {
           }
         }
       })
-      .catch(() => {
-        setClubsError('No se pudo conectar con el servidor. ¿Está ejecutándose?');
+      .catch((err) => {
+        setClubsError(err?.message || 'No se pudo conectar con el servidor. ¿Está ejecutándose?');
         setClubs([]);
       })
       .finally(() => setClubsLoading(false));
