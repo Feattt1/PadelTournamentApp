@@ -6,7 +6,8 @@ const CLUB_KEY = 'padel_club';
 async function fetchClubs() {
   const res = await fetch('/api/clubs');
   if (res.ok) return res.json();
-  return [];
+  const data = await res.json().catch(() => ({}));
+  throw new Error(data.error || `Error ${res.status} al cargar clubes`);
 }
 
 export function ClubProvider({ children }) {
