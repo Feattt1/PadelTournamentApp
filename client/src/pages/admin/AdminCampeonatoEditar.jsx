@@ -36,6 +36,7 @@ export default function AdminCampeonatoEditar() {
   const [loading, setLoading] = useState(!esNuevo);
   const [saving, setSaving] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+  const [finalizando, setFinalizando] = useState(false);
   const [error, setError] = useState('');
   const [generandoGrupos, setGenerandoGrupos] = useState(false);
   const [generandoPartidos, setGenerandoPartidos] = useState(false);
@@ -101,6 +102,20 @@ export default function AdminCampeonatoEditar() {
       setError(err.message || 'Error al guardar');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFinalizar = async () => {
+    if (!confirm(`¿Finalizar "${form.nombre}"?\n\nEsto marcará el torneo como FINALIZADO. Esta acción no se puede deshacer fácilmente.`)) return;
+    setFinalizando(true);
+    try {
+      await campeonatosApi.update(id, { estado: 'FINALIZADO' });
+      setForm((prev) => ({ ...prev, estado: 'FINALIZADO' }));
+      showMensaje('¡Torneo finalizado! Los campeones han sido registrados.');
+    } catch (err) {
+      alert(err.message || 'Error al finalizar el torneo');
+    } finally {
+      setFinalizando(false);
     }
   };
 
@@ -400,6 +415,17 @@ export default function AdminCampeonatoEditar() {
             >
               Ver partidos
             </Link>
+          )}
+
+          {!esNuevo && form.estado === 'EN_CURSO' && (
+            <button
+              type="button"
+              onClick={handleFinalizar}
+              disabled={finalizando}
+              className="px-6 py-2.5 rounded-lg bg-green-600 text-white font-medium hover:bg-green-500 disabled:opacity-50 transition"
+            >
+              {finalizando ? 'Finalizando...' : '🏆 Finalizar torneo'}
+            </button>
           )}
 
           <Link to="/admin/campeonatos" className="px-6 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">

@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "db:seed:demo": "node prisma/seed-demo.js",
     "db:migrate": "prisma migrate dev"
   },
   "dependencies": {
