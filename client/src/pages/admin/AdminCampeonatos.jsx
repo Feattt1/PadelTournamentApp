@@ -44,24 +44,21 @@ export default function AdminCampeonatos() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h1 className="text-3xl font-bold">Administrar campeonatos</h1>
-        <div className="flex gap-2">
-          <Link to="/admin/jugadores" className="px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold">Campeonatos</h1>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/admin/jugadores" className="px-3 py-2 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm">
             Jugadores
           </Link>
-          <Link to="/admin/parejas" className="px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm">
+          <Link to="/admin/parejas" className="px-3 py-2 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm">
             Parejas
           </Link>
-          <Link to="/admin/clubs" className="px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm">
+          <Link to="/admin/clubs" className="px-3 py-2 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm">
             Clubes
           </Link>
-          <Link
-          to="/admin/campeonatos/nuevo"
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500 transition"
-        >
-          Nuevo campeonato
-        </Link>
+          <Link to="/admin/campeonatos/nuevo" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500 transition text-sm">
+            + Nuevo
+          </Link>
         </div>
       </div>
 
@@ -74,45 +71,40 @@ export default function AdminCampeonatos() {
       ) : (
         <div className="space-y-4">
           {campeonatos.map((c) => (
-            <div
-              key={c.id}
-              className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white rounded-xl shadow border border-slate-200"
-            >
-              <div>
-                <h3 className="font-semibold text-lg">{c.nombre}</h3>
-                <p className="text-sm text-slate-500">
-                  {c.modalidad} — Categoría {c.categoria}ª • {formatDate(c.fechaInicio)} - {formatDate(c.fechaFin)}
-                </p>
-                <p className="text-sm text-slate-600 mt-1">
-                  {c._count?.inscripciones ?? 0} inscripciones
-                  {c.maxParejas && ` / ${c.maxParejas}`}
-                </p>
+            <div key={c.id} className="p-4 bg-white rounded-xl shadow border border-slate-200">
+              {/* Fila superior: nombre + badge */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base sm:text-lg truncate">{c.nombre}</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    {formatDate(c.fechaInicio)} — {formatDate(c.fechaFin)}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {c._count?.inscripciones ?? 0} inscripciones
+                    {c.categorias?.length > 0 && ` · ${c.categorias.length} categoría${c.categorias.length > 1 ? 's' : ''}`}
+                  </p>
+                </div>
+                <span className={`shrink-0 px-2 py-1 rounded text-xs font-medium ${
+                  c.estado === 'INSCRIPCIONES' ? 'bg-green-100 text-green-700' :
+                  c.estado === 'EN_CURSO'      ? 'bg-blue-100 text-blue-700' :
+                  c.estado === 'FINALIZADO'    ? 'bg-slate-100 text-slate-600' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {ESTADOS[c.estado] || c.estado}
+                </span>
               </div>
-              <span className={`px-2 py-1 rounded text-sm font-medium ${
-                c.estado === 'INSCRIPCIONES' ? 'bg-green-100 text-green-700' :
-                c.estado === 'EN_CURSO' ? 'bg-blue-100 text-blue-700' :
-                c.estado === 'FINALIZADO' ? 'bg-slate-100 text-slate-600' :
-                'bg-amber-100 text-amber-700'
-              }`}>
-                {ESTADOS[c.estado] || c.estado}
-              </span>
-              <div className="flex gap-2 items-center">
-                <Link
-                  to={`/admin/campeonatos/${c.id}`}
-                  className="px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-sm"
-                >
+              {/* Fila inferior: acciones */}
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/admin/campeonatos/${c.id}`} className="px-3 py-2 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-sm transition">
                   Editar
                 </Link>
-                <Link
-                  to={`/admin/campeonatos/${c.id}/partidos`}
-                  className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm"
-                >
+                <Link to={`/admin/campeonatos/${c.id}/partidos`} className="px-3 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition">
                   Partidos
                 </Link>
                 <button
                   onClick={() => handleEliminar(c)}
                   disabled={eliminando === c.id}
-                  className="px-3 py-1.5 rounded bg-red-100 hover:bg-red-200 text-red-700 font-medium text-sm disabled:opacity-50"
+                  className="px-3 py-2 rounded bg-red-100 hover:bg-red-200 text-red-700 font-medium text-sm disabled:opacity-50 transition ml-auto"
                 >
                   {eliminando === c.id ? '...' : 'Eliminar'}
                 </button>

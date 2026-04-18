@@ -254,38 +254,38 @@ export default function AdminPartidos() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
         <div>
           <Link to={`/admin/campeonatos/${id}`} className="text-blue-600 hover:underline text-sm">
             ← Volver al campeonato
           </Link>
-          <h1 className="text-2xl font-bold mt-1">{campeonato.nombre} — Partidos</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mt-1">{campeonato.nombre}</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
           {hayCanchas && hayPartidosSinHorario && !categoriaActiva && (
             <button
               onClick={handleAsignarHorarios}
               disabled={asignandoHorarios}
-              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
+              className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
             >
               {asignandoHorarios ? 'Asignando...' : 'Asignar horarios'}
             </button>
           )}
           <Link
             to={`/admin/campeonatos/${id}/horarios`}
-            className="px-4 py-2 rounded-lg bg-slate-200 text-sm font-medium hover:bg-slate-300"
+            className="px-3 py-2 rounded-lg bg-slate-200 text-sm font-medium hover:bg-slate-300"
           >
             Canchas
           </Link>
         </div>
       </div>
 
-      {/* Tabs de categorías */}
+      {/* Tabs de categorías — scrollable horizontal en mobile */}
       {categorias.length > 1 && (
-        <div className="flex gap-1 mb-6 border-b border-slate-200">
+        <div className="flex gap-1 mb-6 border-b border-slate-200 overflow-x-auto pb-px -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
           <button
             onClick={() => setCategoriaActiva(null)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`shrink-0 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               categoriaActiva === null
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -297,7 +297,7 @@ export default function AdminPartidos() {
             <button
               key={cat.id}
               onClick={() => setCategoriaActiva(cat.id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              className={`shrink-0 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
                 categoriaActiva === cat.id
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-slate-500 hover:text-slate-700'

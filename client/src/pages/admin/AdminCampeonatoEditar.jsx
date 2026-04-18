@@ -225,7 +225,7 @@ export default function AdminCampeonatoEditar() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-3xl font-bold mb-6">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6">
         {esNuevo ? 'Nuevo torneo' : 'Editar torneo'}
       </h1>
 
@@ -251,7 +251,7 @@ export default function AdminCampeonatoEditar() {
         </div>
 
         {/* Fechas del torneo */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Inicio del torneo</label>
             <input name="fechaInicio" type="datetime-local" value={form.fechaInicio} onChange={handleChange} required
