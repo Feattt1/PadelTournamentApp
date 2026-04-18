@@ -45,7 +45,7 @@ router.get('/', [
 });
 
 // ─── Ver un campeonato ─────────────────────────────────────────────────────────
-router.get('/:id', param('id').isUUID(), async (req, res) => {
+router.get('/:id', param('id').notEmpty(), async (req, res) => {
   try {
     const { id } = req.params;
     const campeonato = await prisma.campeonato.findUnique({
@@ -113,7 +113,7 @@ router.post('/', authenticate, requireClubAdmin, [
 });
 
 // ─── Eliminar campeonato ───────────────────────────────────────────────────────
-router.delete('/:id', authenticate, setClubIdFromCampeonato(), requireClubAdmin, param('id').isUUID(), async (req, res) => {
+router.delete('/:id', authenticate, setClubIdFromCampeonato(), requireClubAdmin, param('id').notEmpty(), async (req, res) => {
   try {
     await prisma.campeonato.delete({ where: { id: req.params.id } });
     res.status(204).send();
@@ -125,7 +125,7 @@ router.delete('/:id', authenticate, setClubIdFromCampeonato(), requireClubAdmin,
 
 // ─── Actualizar campeonato ─────────────────────────────────────────────────────
 router.put('/:id', authenticate, setClubIdFromCampeonato(), requireClubAdmin, [
-  param('id').isUUID(),
+  param('id').notEmpty(),
   body('nombre').optional().trim().notEmpty(),
   body('descripcion').optional().trim(),
   body('fechaInicio').optional().isISO8601(),
@@ -162,7 +162,7 @@ router.put('/:id', authenticate, setClubIdFromCampeonato(), requireClubAdmin, [
 // ─── CATEGORÍAS ────────────────────────────────────────────────────────────────
 
 // Listar categorías de un torneo
-router.get('/:id/categorias', param('id').isUUID(), async (req, res) => {
+router.get('/:id/categorias', param('id').notEmpty(), async (req, res) => {
   try {
     const categorias = await prisma.categoriaTorneo.findMany({
       where: { campeonatoId: req.params.id },
@@ -177,7 +177,7 @@ router.get('/:id/categorias', param('id').isUUID(), async (req, res) => {
 
 // Agregar categoría a un torneo
 router.post('/:id/categorias', authenticate, setClubIdFromCampeonato(), requireClubAdmin, [
-  param('id').isUUID(),
+  param('id').notEmpty(),
   body('categoria').isInt({ min: 1, max: 7 }),
   body('modalidad').isIn(['MASCULINO', 'FEMENINO', 'MIXTO']),
   body('maxParejas').optional().isInt({ min: 1 }),
@@ -212,7 +212,7 @@ router.delete('/:id/categorias/:catId', authenticate, setClubIdFromCampeonato(),
 // ─── DISPONIBILIDAD HORARIA ───────────────────────────────────────────────────
 
 // Listar disponibilidades de un torneo
-router.get('/:id/disponibilidad', param('id').isUUID(), async (req, res) => {
+router.get('/:id/disponibilidad', param('id').notEmpty(), async (req, res) => {
   try {
     const disponibilidades = await prisma.disponibilidadHoraria.findMany({
       where: { campeonatoId: req.params.id },
@@ -226,7 +226,7 @@ router.get('/:id/disponibilidad', param('id').isUUID(), async (req, res) => {
 
 // Crear/actualizar disponibilidad para un día (upsert por fecha)
 router.post('/:id/disponibilidad', authenticate, setClubIdFromCampeonato(), requireClubAdmin, [
-  param('id').isUUID(),
+  param('id').notEmpty(),
   body('fecha').isISO8601(),
   body('horaInicio').matches(/^\d{2}:\d{2}$/),
   body('horaFin').matches(/^\d{2}:\d{2}$/),
@@ -267,7 +267,7 @@ router.delete('/:id/disponibilidad/:dispId', authenticate, setClubIdFromCampeona
 // NUEVO: Sincroniza grupos con el mismo nombre en diferentes categorías a los mismos horarios en diferente cancha.
 // categoriaId opcional: si viene, solo asigna partidos de esa categoría.
 router.post('/:id/partidos/asignar-horarios', authenticate, setClubIdFromCampeonato(), requireClubAdmin,
-  param('id').isUUID(),
+  param('id').notEmpty(),
   async (req, res) => {
     try {
       const campeonatoId = req.params.id;
@@ -448,7 +448,7 @@ router.post('/:id/partidos/asignar-horarios', authenticate, setClubIdFromCampeon
 // ─── Generar grupos ───────────────────────────────────────────────────────────
 // Body: { cantidadGrupos, categoriaId? }
 router.post('/:id/grupos', authenticate, setClubIdFromCampeonato(), requireClubAdmin, [
-  param('id').isUUID(),
+  param('id').notEmpty(),
   body('cantidadGrupos').isInt({ min: 1, max: 16 }),
   body('categoriaId').optional().isUUID(),
 ], async (req, res) => {
@@ -501,7 +501,7 @@ router.post('/:id/grupos', authenticate, setClubIdFromCampeonato(), requireClubA
 // ─── Generar partidos de grupos (round-robin) ─────────────────────────────────
 // Body: { categoriaId? }  — si viene, solo genera para esa categoría
 router.post('/:id/partidos/grupos', authenticate, setClubIdFromCampeonato(), requireClubAdmin,
-  param('id').isUUID(),
+  param('id').notEmpty(),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -592,7 +592,7 @@ router.post('/:id/partidos/grupos', authenticate, setClubIdFromCampeonato(), req
 // ─── Generar bracket de eliminatorias ─────────────────────────────────────────
 // Body: { categoriaId? }
 router.post('/:id/partidos/eliminatorias', authenticate, setClubIdFromCampeonato(), requireClubAdmin,
-  param('id').isUUID(),
+  param('id').notEmpty(),
   async (req, res) => {
     try {
       const { id } = req.params;

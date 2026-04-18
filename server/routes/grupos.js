@@ -7,7 +7,7 @@ const router = Router();
 
 // Clasificación de grupos (filtrable por categoría)
 router.get('/', [
-  query('campeonatoId').isUUID(),
+  query('campeonatoId').notEmpty(),
   query('categoriaId').optional().isUUID(),
 ], async (req, res) => {
   try {
@@ -37,7 +37,7 @@ router.get('/', [
   }
 });
 
-router.get('/:id', param('id').isUUID(), async (req, res) => {
+router.get('/:id', param('id').notEmpty(), async (req, res) => {
   try {
     const { id } = req.params;
     const grupo = await prisma.grupo.findUnique({

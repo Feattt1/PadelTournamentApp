@@ -107,7 +107,7 @@ async function avanzarGanadorBracket(partido, setsLocal, setsVisitante, gamesLoc
 
 // ─── Listar partidos ──────────────────────────────────────────────────────────
 router.get('/', [
-  query('campeonatoId').optional().isUUID(),
+  query('campeonatoId').optional().notEmpty(),
   query('categoriaId').optional().isUUID(),
   query('grupoId').optional().isUUID(),
   query('fase').optional().isIn(['GRUPOS', 'CUARTOS', 'SEMIS', 'FINAL']),
@@ -159,7 +159,7 @@ router.get('/', [
 
 // ─── Crear partido (admin) ────────────────────────────────────────────────────
 router.post('/', authenticate, setClubIdFromCampeonatoBody, requireClubAdmin, [
-  body('campeonatoId').isUUID(),
+  body('campeonatoId').notEmpty(),
   body('categoriaId').optional().isUUID(),
   body('grupoId').optional().isUUID(),
   body('fase').isIn(['GRUPOS', 'CUARTOS', 'SEMIS', 'FINAL']),

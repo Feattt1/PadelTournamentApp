@@ -7,7 +7,7 @@ const router = Router();
 
 // Listar inscripciones (opcional auth; mis=true requiere auth para filtrar por usuario)
 router.get('/', optionalAuth, [
-  query('campeonatoId').optional().isUUID(),
+  query('campeonatoId').optional().notEmpty(),
   query('estado').optional().isIn(['PENDIENTE', 'ACEPTADA', 'RECHAZADA', 'LISTA_ESPERA']),
   query('mis').optional().isBoolean(),
 ], async (req, res) => {
@@ -48,7 +48,7 @@ router.get('/', optionalAuth, [
 
 // Inscribir pareja (jugador o admin; admin omite fechas/estado)
 router.post('/', authenticate, [
-  body('campeonatoId').isUUID(),
+  body('campeonatoId').notEmpty(),
   body('parejaId').isUUID(),
 ], async (req, res) => {
   try {
