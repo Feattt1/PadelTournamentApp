@@ -118,35 +118,42 @@ router.delete('/:id', authenticate, requireAdmin, param('id').isUUID(), async (r
 });
 
 // ─── Ranking anual del club ────────────────────────────────────────────────────
-// GET /clubs/:clubId/ranking?year=2026
+// GET /clubs/:clubId/ranking?year=2026&categoria=5&modalidad=MASCULINO
 router.get('/:clubId/ranking', async (req, res) => {
   try {
     const { clubId } = req.params;
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const year      = parseInt(req.query.year) || new Date().getFullYear();
+    const categoria = req.query.categoria ? parseInt(req.query.categoria) : undefined;
+    const modalidad = req.query.modalidad || undefined;
+
     const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
     const endOfYear   = new Date(`${year}-12-31T23:59:59.999Z`);
+    const campeonatoWhere = { clubId, fechaInicio: { gte: startOfYear, lte: endOfYear } };
 
-    // Agrupa ClasificacionGrupo por pareja, sumando stats de todos los torneos del club en el año
+    // Categorías disponibles este año para el selector del frontend
+    const categoriasDisponibles = await prisma.categoriaTorneo.findMany({
+      where: { campeonato: campeonatoWhere },
+      select: { categoria: true, modalidad: true },
+      distinct: ['categoria', 'modalidad'],
+      orderBy: [{ categoria: 'asc' }, { modalidad: 'asc' }],
+    });
+
+    // Filtro de grupo con categoría opcional
+    const grupoWhere = {
+      campeonato: campeonatoWhere,
+      ...(categoria !== undefined || modalidad
+        ? { categoria: { categoria, ...(modalidad ? { modalidad } : {}) } }
+        : {}),
+    };
+
     const rows = await prisma.clasificacionGrupo.groupBy({
       by: ['parejaId'],
-      where: {
-        grupo: {
-          campeonato: {
-            clubId,
-            fechaInicio: { gte: startOfYear, lte: endOfYear },
-          },
-        },
-      },
+      where: { grupo: grupoWhere },
       _sum: {
-        puntos: true,
-        partidosJugados: true,
-        partidosGanados: true,
-        setsGanados: true,
-        setsPerdidos: true,
-        gamesGanados: true,
-        gamesPerdidos: true,
+        puntos: true, partidosJugados: true, partidosGanados: true,
+        setsGanados: true, setsPerdidos: true, gamesGanados: true, gamesPerdidos: true,
       },
-      _count: { grupoId: true }, // cuántos grupos (≈ torneos) participó
+      _count: { grupoId: true },
       orderBy: [
         { _sum: { puntos: 'desc' } },
         { _sum: { setsGanados: 'desc' } },
@@ -154,10 +161,8 @@ router.get('/:clubId/ranking', async (req, res) => {
       ],
     });
 
-    // Enriquecer con datos de pareja
-    const parejaIds = rows.map((r) => r.parejaId);
     const parejas = await prisma.pareja.findMany({
-      where: { id: { in: parejaIds } },
+      where: { id: { in: rows.map((r) => r.parejaId) } },
       include: {
         jugador1: { include: { usuario: { select: { nombre: true } } } },
         jugador2: { include: { usuario: { select: { nombre: true } } } },
@@ -167,8 +172,8 @@ router.get('/:clubId/ranking', async (req, res) => {
 
     const ranking = rows.map((r) => ({
       parejaId: r.parejaId,
-      pareja: parejaMap[r.parejaId] ?? null,
-      torneos: r._count.grupoId,
+      pareja:          parejaMap[r.parejaId] ?? null,
+      torneos:         r._count.grupoId,
       puntos:          r._sum.puntos          ?? 0,
       partidosJugados: r._sum.partidosJugados ?? 0,
       partidosGanados: r._sum.partidosGanados ?? 0,
@@ -178,7 +183,7 @@ router.get('/:clubId/ranking', async (req, res) => {
       gamesPerdidos:   r._sum.gamesPerdidos   ?? 0,
     }));
 
-    res.json({ year, clubId, ranking });
+    res.json({ year, clubId, ranking, categorias: categoriasDisponibles });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

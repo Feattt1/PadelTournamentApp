@@ -49,8 +49,8 @@ export default function Layout() {
 
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 font-bold text-xl sm:text-2xl tracking-wider shrink-0">
-              <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 bg-clip-text text-transparent">Padel</span>
-              <span className="text-white">Championship</span>
+              <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 bg-clip-text text-transparent">Torneos Padel</span>
+              <span className="text-white">UY</span>
             </Link>
 
             {/* Desktop nav */}
@@ -248,7 +248,7 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mb-6 sm:mb-8">
             <div>
-              <h3 className="font-bold text-lg mb-3">Padel Championship</h3>
+              <h3 className="font-bold text-lg mb-3">Torneos Padel UY</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
                 La plataforma más completa para gestionar torneos de pádel.
               </p>
@@ -266,7 +266,7 @@ export default function Layout() {
             </div>
           </div>
           <div className="border-t border-slate-800 pt-6 text-center text-slate-500 text-xs">
-            <p>© {new Date().getFullYear()} Padel Championship</p>
+            <p>© {new Date().getFullYear()} Torneos Padel UY</p>
           </div>
         </div>
       </footer>

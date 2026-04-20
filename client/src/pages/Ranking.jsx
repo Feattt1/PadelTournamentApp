@@ -4,16 +4,21 @@ import { clubsApi } from '../services/api';
 
 const MEDALLAS = ['🥇', '🥈', '🥉'];
 const ROW_BG = ['bg-yellow-50', 'bg-slate-50', 'bg-orange-50/40'];
+const MODALIDAD_LABEL = { MASCULINO: 'Masc.', FEMENINO: 'Fem.', MIXTO: 'Mixto' };
 
 function parejaLabel(pareja) {
   if (!pareja) return '—';
   return `${pareja.jugador1?.usuario?.nombre || '?'} / ${pareja.jugador2?.usuario?.nombre || '?'}`;
 }
 
+function catKey(cat) { return `${cat.categoria}_${cat.modalidad}`; }
+function catLabel(cat) { return `${cat.categoria}ta ${MODALIDAD_LABEL[cat.modalidad] ?? cat.modalidad}`; }
+
 export default function Ranking() {
   const { club } = useClub();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
+  const [catSel, setCatSel] = useState(null); // { categoria, modalidad } | null = todas
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,19 +27,26 @@ export default function Ranking() {
     if (!club?.id) return;
     setLoading(true);
     setError('');
-    clubsApi.ranking(club.id, year)
-      .then(setData)
+    clubsApi.ranking(club.id, year, catSel?.categoria, catSel?.modalidad)
+      .then((res) => {
+        setData(res);
+        // Si no hay categoría seleccionada y hay categorías disponibles, seleccionar la primera
+        if (!catSel && res.categorias?.length > 0) {
+          setCatSel(res.categorias[0]);
+        }
+      })
       .catch((e) => setError(e.message || 'Error al cargar el ranking'))
       .finally(() => setLoading(false));
-  }, [club?.id, year]);
+  }, [club?.id, year, catSel?.categoria, catSel?.modalidad]);
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const ranking = data?.ranking ?? [];
+  const categorias = data?.categorias ?? [];
 
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <p className="text-xs text-slate-400 uppercase tracking-wider mb-1 font-medium">
           {club?.nombre}
         </p>
@@ -46,11 +58,11 @@ export default function Ranking() {
             </p>
           </div>
           {/* Selector de año */}
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
             {years.map((y) => (
               <button
                 key={y}
-                onClick={() => setYear(y)}
+                onClick={() => { setYear(y); setCatSel(null); }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                   year === y
                     ? 'bg-slate-900 text-white shadow-sm'
@@ -63,6 +75,28 @@ export default function Ranking() {
           </div>
         </div>
       </div>
+
+      {/* Selector de categoría */}
+      {categorias.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {categorias.map((cat) => {
+            const sel = catSel && catKey(catSel) === catKey(cat);
+            return (
+              <button
+                key={catKey(cat)}
+                onClick={() => setCatSel(sel ? null : cat)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition border ${
+                  sel
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                }`}
+              >
+                {catLabel(cat)}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">

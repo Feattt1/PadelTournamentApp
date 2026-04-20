@@ -32,7 +32,14 @@ async function request(path, options = {}) {
 
 export const clubsApi = {
   list: () => request('/clubs'),
-  ranking: (clubId, year) => request(`/clubs/${clubId}/ranking${year ? `?year=${year}` : ''}`),
+  ranking: (clubId, year, categoria, modalidad) => {
+    const p = new URLSearchParams();
+    if (year) p.set('year', year);
+    if (categoria) p.set('categoria', categoria);
+    if (modalidad) p.set('modalidad', modalidad);
+    const q = p.toString();
+    return request(`/clubs/${clubId}/ranking${q ? '?' + q : ''}`);
+  },
   create: (nombre) => request('/clubs', { method: 'POST', body: JSON.stringify({ nombre }) }),
   assignAdmin: (clubId, emailOrUsuarioId) => {
     const body = typeof emailOrUsuarioId === 'string' && emailOrUsuarioId.includes('@')
