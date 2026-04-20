@@ -109,7 +109,7 @@ export default function Home() {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
               Bienvenido a
               <span className="block bg-gradient-to-r from-yellow-400 to-yellow-500 bg-clip-text text-transparent">
-                Championship Padel
+                Torneos Padel UY
               </span>
             </h1>
             <p className="text-lg sm:text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
