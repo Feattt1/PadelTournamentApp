@@ -264,36 +264,45 @@ router.delete('/:id/disponibilidad/:dispId', authenticate, setClubIdFromCampeona
 });
 
 // ─── Auto-asignar horarios a los partidos ─────────────────────────────────────
-// NUEVO: Sincroniza grupos con el mismo nombre en diferentes categorías a los mismos horarios en diferente cancha.
-// categoriaId opcional: si viene, solo asigna partidos de esa categoría.
 router.post('/:id/partidos/asignar-horarios', authenticate, setClubIdFromCampeonato(), requireClubAdmin,
   param('id').notEmpty(),
   async (req, res) => {
     try {
       const campeonatoId = req.params.id;
-      const { categoriaId } = req.body;
 
-      // Traer todas las canchas del torneo, ordenadas por número
-      const pistas = await prisma.pista.findMany({
+      // Usar DisponibilidadHoraria (modelo del AdminHorarios)
+      const disponibilidades = await prisma.disponibilidadHoraria.findMany({
         where: { campeonatoId },
-        orderBy: { numero: 'asc' },
+        orderBy: { fecha: 'asc' },
       });
 
-      if (pistas.length === 0) {
-        return res.status(400).json({ error: 'No hay canchas configuradas para este torneo.' });
+      if (disponibilidades.length === 0) {
+        return res.status(400).json({ error: 'No hay disponibilidad horaria configurada. Andá a "Canchas" y agregá días con canchas disponibles.' });
       }
 
-      // Traer TODOS los partidos pendientes sin horario (siempre todas las categorías juntas
-      // para que los grupos del mismo nombre queden sincronizados en la misma franja)
-      const wherePartidos = {
-        campeonatoId,
-        fechaHora: null,
-        estado: { not: 'FINALIZADO' },
-      };
+      // Generar todos los slots disponibles en orden cronológico
+      // Cada DisponibilidadHoraria tiene N canchas, cada una con M turnos
+      const slots = []; // { fechaHora, cancha }
+      for (const disp of disponibilidades) {
+        const [hI, mI] = disp.horaInicio.split(':').map(Number);
+        const [hF, mF] = disp.horaFin.split(':').map(Number);
+        const dur = disp.duracionMinutos;
+        const minFin = hF * 60 + mF;
 
+        let min = hI * 60 + mI;
+        while (min + dur <= minFin) {
+          for (let c = 1; c <= disp.cantidadCanchas; c++) {
+            const fechaHora = new Date(disp.fecha);
+            fechaHora.setHours(Math.floor(min / 60), min % 60, 0, 0);
+            slots.push({ fechaHora, cancha: `Cancha ${c}` });
+          }
+          min += dur;
+        }
+      }
+
+      // Partidos pendientes sin horario, grupos primero luego eliminatorias
       const partidos = await prisma.partido.findMany({
-        where: wherePartidos,
-        include: { grupo: true },
+        where: { campeonatoId, fechaHora: null, estado: { not: 'FINALIZADO' } },
         orderBy: [{ fase: 'asc' }, { grupoId: 'asc' }, { ordenRonda: 'asc' }],
       });
 
@@ -301,143 +310,22 @@ router.post('/:id/partidos/asignar-horarios', authenticate, setClubIdFromCampeon
         return res.status(400).json({ error: 'No hay partidos pendientes sin horario para asignar.' });
       }
 
-      // Separar grupos de eliminatorias
-      const gruposPartidos = partidos.filter((p) => p.fase === 'GRUPOS');
-      const eliminatoriasPartidos = partidos.filter((p) => p.fase !== 'GRUPOS');
-
-      // Agrupar partidos de GRUPOS por grupoId y recolectar nombres únicos
-      const gruposMap = new Map(); // grupoId → [partidos]
-      const gruposPorNombre = new Map(); // nombreGrupo → [{ grupoId, categoriaId, partidos }]
-
-      for (const p of gruposPartidos) {
-        if (!gruposMap.has(p.grupoId)) {
-          gruposMap.set(p.grupoId, []);
-        }
-        gruposMap.get(p.grupoId).push(p);
-      }
-
-      // Reorganizar por nombre para sincronización
-      for (const [grupoId, pPartidos] of gruposMap.entries()) {
-        const nombreGrupo = pPartidos[0].grupo?.nombre || 'unknown';
-        const catId = pPartidos[0].categoriaId;
-
-        if (!gruposPorNombre.has(nombreGrupo)) {
-          gruposPorNombre.set(nombreGrupo, []);
-        }
-
-        gruposPorNombre.get(nombreGrupo).push({
-          grupoId,
-          categoriaId: catId || 'sin-categoria',
-          partidos: pPartidos.sort((a, b) => (a.ordenRonda ?? 99) - (b.ordenRonda ?? 99)),
+      if (slots.length < partidos.length) {
+        return res.status(400).json({
+          error: `Hay ${partidos.length} partidos pero solo ${slots.length} slots disponibles. Agregá más días o canchas.`,
         });
       }
 
-      // Generar slots: { "fecha_tipoFase": { "Cancha X": [slots] } }
-      const availableSlots = {}; // fecha_tipoFase → { pistaName → [slots] }
-
-      for (const pista of pistas) {
-        const disp = await prisma.pistaDisponibilidad.findMany({
-          where: { pistaId: pista.id },
-        });
-
-        for (const d of disp) {
-          const key = `${d.fecha.toISOString().slice(0, 10)}_${d.tipoFase}`;
-          if (!availableSlots[key]) availableSlots[key] = {};
-          if (!availableSlots[key][pista.nombre]) availableSlots[key][pista.nombre] = [];
-
-          // Generate time slots
-          const [hI, mI] = d.horaInicio.split(':').map(Number);
-          const [hF, mF] = d.horaFin.split(':').map(Number);
-          const dur = d.duracionMinutos;
-          let min = hI * 60 + mI;
-          const minFin = hF * 60 + mF;
-
-          while (min + dur <= minFin) {
-            const date = new Date(d.fecha);
-            date.setHours(Math.floor(min / 60), min % 60, 0, 0);
-            availableSlots[key][pista.nombre].push({ fechaHora: date, pista: pista.nombre });
-            min += dur;
-          }
-        }
-      }
-
-      const updates = [];
-      let gruposAsignados = 0;
-
-      // Asignar grupos
-      for (const [nombreGrupo, gruposArray] of gruposPorNombre.entries()) {
-        gruposArray.sort((a, b) => (a.categoriaId || '').localeCompare(b.categoriaId || ''));
-        const numCats = gruposArray.length;
-        const gruposKey = Object.keys(availableSlots).find(k => k.endsWith('_GRUPOS'));
-
-        if (!gruposKey) {
-          return res.status(400).json({ error: `Sin disponibilidad GRUPOS para "${nombreGrupo}".` });
-        }
-
-        const gruposSlotsByPista = availableSlots[gruposKey];
-        const pistasConSlots = Object.entries(gruposSlotsByPista).filter(([_, slots]) => slots.length >= 3);
-
-        if (pistasConSlots.length < numCats) {
-          return res.status(400).json({
-            error: `"${nombreGrupo}": necesita ${numCats} canchas, solo hay ${pistasConSlots.length} con slots.`,
-          });
-        }
-
-        // Asignar cada categoría a una cancha diferente
-        for (let catIdx = 0; catIdx < gruposArray.length; catIdx++) {
-          const grupo = gruposArray[catIdx];
-          const [pistaName, slots] = pistasConSlots[catIdx];
-
-          // Asignar los 3 partidos a los primeros 3 slots
-          for (let pIdx = 0; pIdx < grupo.partidos.length && pIdx < slots.length; pIdx++) {
-            updates.push(
-              prisma.partido.update({
-                where: { id: grupo.partidos[pIdx].id },
-                data: {
-                  fechaHora: slots[pIdx].fechaHora,
-                  pista: pistaName,
-                },
-              })
-            );
-          }
-        }
-
-        // Remove used slots
-        for (const [pistaName] of pistasConSlots.slice(0, numCats)) {
-          gruposSlotsByPista[pistaName].splice(0, 3);
-        }
-
-        gruposAsignados += numCats;
-      }
-
-      // Assign elimination matches
-      const eliminKey = Object.keys(availableSlots).find(k => k.endsWith('_ELIMINATORIAS'));
-      if (eliminKey) {
-        for (const p of eliminatoriasPartidos) {
-          let asignado = false;
-          for (const [pistaName, slots] of Object.entries(availableSlots[eliminKey])) {
-            if (slots.length > 0) {
-              const slot = slots.shift();
-              updates.push(
-                prisma.partido.update({
-                  where: { id: p.id },
-                  data: { fechaHora: slot.fechaHora, pista: slot.pista },
-                })
-              );
-              asignado = true;
-              break;
-            }
-          }
-        }
-      }
-
-      if (updates.length === 0) {
-        return res.status(400).json({ error: 'No se asignaron partidos.' });
-      }
+      const updates = partidos.map((p, i) =>
+        prisma.partido.update({
+          where: { id: p.id },
+          data: { fechaHora: slots[i].fechaHora, pista: slots[i].cancha },
+        })
+      );
 
       await prisma.$transaction(updates);
 
-      res.json({ asignados: updates.length, gruposAsignados });
+      res.json({ asignados: updates.length });
     } catch (err) {
       console.error('Scheduling error:', err);
       res.status(500).json({ error: err.message });

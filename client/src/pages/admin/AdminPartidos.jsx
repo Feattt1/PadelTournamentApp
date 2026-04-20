@@ -331,7 +331,7 @@ export default function AdminPartidos() {
           <p className="text-sm text-slate-500 mt-0.5">Gestión de grupos, partidos y eliminatorias</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {hayCanchas && hayPartidosSinHorario && !categoriaActiva && (
+          {hayCanchas && hayPartidosSinHorario && (
             <button
               onClick={handleAsignarHorarios}
               disabled={asignandoHorarios}
