@@ -13,6 +13,39 @@ function formatDate(d) {
   });
 }
 
+// Genera todos los slots posibles a partir de las DisponibilidadHoraria del torneo
+function generarSlots(disponibilidades = []) {
+  const slots = [];
+  for (const disp of disponibilidades) {
+    const [hI, mI] = disp.horaInicio.split(':').map(Number);
+    const [hF, mF] = disp.horaFin.split(':').map(Number);
+    const dur = disp.duracionMinutos;
+    const minFin = hF * 60 + mF;
+    let min = hI * 60 + mI;
+    while (min + dur <= minFin) {
+      for (let c = 1; c <= disp.cantidadCanchas; c++) {
+        const fechaHora = new Date(disp.fecha);
+        fechaHora.setHours(Math.floor(min / 60), min % 60, 0, 0);
+        const canchaLabel = `Cancha ${c}`;
+        slots.push({
+          key: `${fechaHora.toISOString()}|${canchaLabel}`,
+          fechaHora,
+          cancha: canchaLabel,
+          fechaLabel: fechaHora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }),
+          horaLabel: fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+        });
+      }
+      min += dur;
+    }
+  }
+  return slots;
+}
+
+function slotKey(partido) {
+  if (!partido?.fechaHora || !partido?.pista) return null;
+  return `${new Date(partido.fechaHora).toISOString()}|${partido.pista}`;
+}
+
 function setsLabel(partido) {
   if (partido.estado !== 'FINALIZADO') return null;
   if (partido.sets && partido.sets.length > 0) {
@@ -77,30 +110,48 @@ function ordenLabel(p) {
   return null;
 }
 
-function PartidoRow({ p, onEditar, partidoEditando, sets, onSetsChange, onGuardar, onCancelar, onRefresh }) {
+function PartidoRow({ p, onEditar, partidoEditando, sets, onSetsChange, onGuardar, onCancelar, onRefresh, allSlots, todosPartidos }) {
   const editing = partidoEditando === p.id;
   const resultado = setsLabel(p);
   const fecha = formatDate(p.fechaHora);
   const oLabel = ordenLabel(p);
 
   const [editandoHorario, setEditandoHorario] = useState(false);
-  const [fechaEdit, setFechaEdit] = useState('');
-  const [canchaEdit, setCanchaEdit] = useState('');
+  const [slotSel, setSlotSel] = useState('');
   const [guardandoHorario, setGuardandoHorario] = useState(false);
 
+  // Slot que tiene actualmente este partido
+  const miSlotKey = slotKey(p);
+
+  // Slots ocupados por OTROS partidos (no este)
+  const ocupados = new Set(
+    (todosPartidos || [])
+      .filter((x) => x.id !== p.id)
+      .map(slotKey)
+      .filter(Boolean)
+  );
+
+  // Agrupar slots por fecha para los optgroups
+  const slotsPorFecha = {};
+  for (const s of allSlots || []) {
+    if (!slotsPorFecha[s.fechaLabel]) slotsPorFecha[s.fechaLabel] = [];
+    slotsPorFecha[s.fechaLabel].push(s);
+  }
+
   const abrirEditHorario = () => {
-    // Convertir fechaHora ISO a valor para datetime-local
-    const val = p.fechaHora ? new Date(p.fechaHora).toISOString().slice(0, 16) : '';
-    setFechaEdit(val);
-    setCanchaEdit(p.pista || '');
+    setSlotSel(miSlotKey || '');
     setEditandoHorario(true);
   };
 
   const guardarHorario = async () => {
-    if (!fechaEdit) return;
     setGuardandoHorario(true);
     try {
-      await partidosApi.asignarHorario(p.id, new Date(fechaEdit).toISOString(), canchaEdit || null);
+      if (!slotSel) {
+        await partidosApi.desasignarHorario(p.id);
+      } else {
+        const slot = (allSlots || []).find((s) => s.key === slotSel);
+        if (slot) await partidosApi.asignarHorario(p.id, slot.fechaHora.toISOString(), slot.cancha);
+      }
       setEditandoHorario(false);
       onRefresh();
     } catch (err) {
@@ -126,40 +177,53 @@ function PartidoRow({ p, onEditar, partidoEditando, sets, onSetsChange, onGuarda
         {oLabel && <span className="text-xs text-slate-400 px-1">{oLabel}</span>}
       </div>
 
-      {/* Horario: mostrar o editar */}
+      {/* Horario: mostrar o editar con selector */}
       {editandoHorario ? (
-        <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
-          <input
-            type="datetime-local"
-            value={fechaEdit}
-            onChange={(e) => setFechaEdit(e.target.value)}
-            className="text-xs border border-slate-300 rounded px-2 py-1"
-          />
-          <input
-            type="text"
-            value={canchaEdit}
-            onChange={(e) => setCanchaEdit(e.target.value)}
-            placeholder="Cancha 1"
-            className="text-xs border border-slate-300 rounded px-2 py-1 w-24"
-          />
+        <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 shrink-0">
+          <select
+            value={slotSel}
+            onChange={(e) => setSlotSel(e.target.value)}
+            className="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white max-w-[260px]"
+          >
+            <option value="">— Sin horario —</option>
+            {Object.entries(slotsPorFecha).map(([fechaLabel, slots]) => (
+              <optgroup key={fechaLabel} label={fechaLabel}>
+                {slots.map((s) => {
+                  const esEste = s.key === miSlotKey;
+                  const ocupado = ocupados.has(s.key);
+                  return (
+                    <option
+                      key={s.key}
+                      value={s.key}
+                      disabled={ocupado && !esEste}
+                    >
+                      {s.horaLabel} · {s.cancha}{ocupado && !esEste ? ' (ocupado)' : ''}
+                    </option>
+                  );
+                })}
+              </optgroup>
+            ))}
+            {(allSlots || []).length === 0 && (
+              <option disabled>No hay slots configurados</option>
+            )}
+          </select>
           <button onClick={guardarHorario} disabled={guardandoHorario}
-            className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50">
-            {guardandoHorario ? '...' : 'OK'}
+            className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50 font-medium">
+            {guardandoHorario ? '...' : 'Guardar'}
           </button>
           <button onClick={() => setEditandoHorario(false)}
-            className="text-xs px-2 py-1 bg-slate-200 rounded hover:bg-slate-300">
-            ✕
+            className="text-xs px-2 py-1.5 bg-slate-200 rounded hover:bg-slate-300">
+            Cancelar
           </button>
         </div>
       ) : (
         <button
           onClick={abrirEditHorario}
-          className={`text-xs px-2 py-0.5 rounded border transition shrink-0 ${
+          className={`text-xs px-2 py-1 rounded border transition shrink-0 ${
             fecha
               ? 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'
-              : 'text-slate-400 border-dashed border-slate-300 hover:border-slate-400 hover:text-slate-600'
+              : 'text-slate-400 border-dashed border-slate-300 hover:border-slate-400 hover:text-slate-500'
           }`}
-          title="Editar horario"
         >
           {fecha ? `${fecha}${p.pista ? ` · ${p.pista}` : ''}` : '+ Asignar horario'}
         </button>
@@ -373,6 +437,7 @@ export default function AdminPartidos() {
   if (loading || !campeonato) return <div className="text-slate-500">Cargando...</div>;
 
   const categorias = campeonato.categorias ?? [];
+  const allSlots = generarSlots(campeonato.disponibilidades ?? []);
   const partidosFiltrados = categoriaActiva
     ? partidos.filter((p) => p.categoriaId === categoriaActiva)
     : partidos;
@@ -575,6 +640,8 @@ export default function AdminPartidos() {
                 onGuardar={() => handleGuardar(p.id)}
                 onCancelar={handleCancelar}
                 onRefresh={load}
+                allSlots={allSlots}
+                todosPartidos={partidos}
               />
             ))}
           </div>
@@ -612,6 +679,8 @@ export default function AdminPartidos() {
                 onGuardar={() => handleGuardar(p.id)}
                 onCancelar={handleCancelar}
                 onRefresh={load}
+                allSlots={allSlots}
+                todosPartidos={partidos}
               />
             ))}
           </div>
