@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { campeonatosApi, partidosApi } from '../../services/api';
+import { campeonatosApi, partidosApi, gruposApi, inscripcionesApi } from '../../services/api';
 import { useClub } from '../../context/ClubContext';
 
 const MODALIDAD_LABEL = { MASCULINO: 'Masculino', FEMENINO: 'Femenino', MIXTO: 'Mixto' };
@@ -148,6 +148,9 @@ export default function AdminPartidos() {
   const [generandoEliminatorias, setGenerandoEliminatorias] = useState(false);
   const [asignandoHorarios, setAsignandoHorarios] = useState(false);
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
+  const [grupos, setGrupos] = useState([]);
+  const [inscripciones, setInscripciones] = useState([]);
+  const [seleccionEnGrupo, setSeleccionEnGrupo] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -166,7 +169,19 @@ export default function AdminPartidos() {
     }
   };
 
+  const loadGrupos = async (catId) => {
+    if (!catId) { setGrupos([]); setInscripciones([]); return; }
+    const [g, insc] = await Promise.all([
+      gruposApi.list(id, catId).catch(() => []),
+      inscripcionesApi.list({ campeonatoId: id, categoriaId: catId, estado: 'ACEPTADA' }).catch(() => []),
+    ]);
+    setGrupos(g);
+    setInscripciones(insc);
+    setSeleccionEnGrupo({});
+  };
+
   useEffect(() => { load(); }, [id, club?.id]);
+  useEffect(() => { loadGrupos(categoriaActiva); }, [categoriaActiva]);
 
   const showMensaje = (texto, tipo = 'ok') => {
     setMensaje({ texto, tipo });
@@ -235,6 +250,27 @@ export default function AdminPartidos() {
       showMensaje(err.message || 'Error al asignar horarios', 'error');
     } finally {
       setAsignandoHorarios(false);
+    }
+  };
+
+  const handleAgregarPareja = async (grupoId) => {
+    const parejaId = seleccionEnGrupo[grupoId];
+    if (!parejaId) return;
+    try {
+      await gruposApi.agregarPareja(grupoId, parejaId);
+      await loadGrupos(categoriaActiva);
+    } catch (err) {
+      showMensaje(err.message || 'Error al agregar pareja', 'error');
+    }
+  };
+
+  const handleQuitarPareja = async (grupoId, parejaId) => {
+    if (!confirm('¿Quitar esta pareja del grupo?')) return;
+    try {
+      await gruposApi.quitarPareja(grupoId, parejaId);
+      await loadGrupos(categoriaActiva);
+    } catch (err) {
+      showMensaje(err.message || 'Error al quitar pareja', 'error');
     }
   };
 
@@ -317,6 +353,76 @@ export default function AdminPartidos() {
           {mensaje.texto}
         </div>
       )}
+
+      {/* Gestión de grupos — solo cuando hay categoría activa y grupos creados */}
+      {categoriaActiva && grupos.length > 0 && (() => {
+        const parejasEnGrupos = new Set(grupos.flatMap((g) => g.clasificaciones.map((c) => c.parejaId)));
+        const disponibles = inscripciones.filter((i) => !parejasEnGrupos.has(i.parejaId));
+        return (
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Grupos</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {grupos.map((grupo) => (
+                <div key={grupo.id} className="border border-slate-200 rounded-xl p-4 bg-white">
+                  <h3 className="font-semibold text-slate-800 mb-3">{grupo.nombre}</h3>
+
+                  {grupo.clasificaciones.length === 0 ? (
+                    <p className="text-xs text-slate-400 mb-3 italic">Sin parejas asignadas</p>
+                  ) : (
+                    <ul className="space-y-2 mb-3">
+                      {grupo.clasificaciones.map((c) => (
+                        <li key={c.parejaId} className="flex items-center justify-between text-sm">
+                          <span className="text-slate-700">{parejaLabel(c.pareja)}</span>
+                          <button
+                            onClick={() => handleQuitarPareja(grupo.id, c.parejaId)}
+                            className="text-red-500 hover:text-red-700 text-xs px-2 py-0.5 rounded hover:bg-red-50"
+                          >
+                            Quitar
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {disponibles.length > 0 && (
+                    <div className="flex gap-2 pt-2 border-t border-slate-100">
+                      <select
+                        value={seleccionEnGrupo[grupo.id] || ''}
+                        onChange={(e) => setSeleccionEnGrupo((prev) => ({ ...prev, [grupo.id]: e.target.value }))}
+                        className="flex-1 text-xs border border-slate-200 rounded px-2 py-1 bg-white"
+                      >
+                        <option value="">Agregar pareja...</option>
+                        {disponibles.map((i) => (
+                          <option key={i.parejaId} value={i.parejaId}>
+                            {parejaLabel(i.pareja)}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => handleAgregarPareja(grupo.id)}
+                        disabled={!seleccionEnGrupo[grupo.id]}
+                        className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-40"
+                      >
+                        + Agregar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {disponibles.length > 0 && (
+              <p className="text-xs text-slate-500 mt-3">
+                {disponibles.length} pareja{disponibles.length !== 1 ? 's' : ''} sin grupo:{' '}
+                {disponibles.map((i) => parejaLabel(i.pareja)).join(', ')}
+              </p>
+            )}
+            {disponibles.length === 0 && (
+              <p className="text-xs text-green-700 mt-3">Todas las parejas están asignadas a un grupo.</p>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Partidos de grupos */}
       <section className="mb-8">

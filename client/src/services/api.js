@@ -172,6 +172,10 @@ export const gruposApi = {
     return request(`/grupos?${q}`);
   },
   get: (id) => request(`/grupos/${id}`),
+  agregarPareja: (grupoId, parejaId) =>
+    request(`/grupos/${grupoId}/parejas`, { method: 'POST', body: JSON.stringify({ parejaId }) }),
+  quitarPareja: (grupoId, parejaId) =>
+    request(`/grupos/${grupoId}/parejas/${parejaId}`, { method: 'DELETE' }),
 };
 
 export const jugadoresApi = {

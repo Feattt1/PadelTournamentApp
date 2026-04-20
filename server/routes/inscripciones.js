@@ -8,13 +8,15 @@ const router = Router();
 // Listar inscripciones (opcional auth; mis=true requiere auth para filtrar por usuario)
 router.get('/', optionalAuth, [
   query('campeonatoId').optional().notEmpty(),
+  query('categoriaId').optional().isUUID(),
   query('estado').optional().isIn(['PENDIENTE', 'ACEPTADA', 'RECHAZADA', 'LISTA_ESPERA']),
   query('mis').optional().isBoolean(),
 ], async (req, res) => {
   try {
-    const { campeonatoId, estado, mis } = req.query;
+    const { campeonatoId, categoriaId, estado, mis } = req.query;
     const where = {};
     if (campeonatoId) where.campeonatoId = campeonatoId;
+    if (categoriaId) where.categoriaId = categoriaId;
     if (estado) where.estado = estado;
 
     // Filtrar solo inscripciones del usuario (parejas donde participa)

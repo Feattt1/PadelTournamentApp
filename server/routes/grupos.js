@@ -71,4 +71,70 @@ router.get('/:id', param('id').notEmpty(), async (req, res) => {
   }
 });
 
+// ─── Agregar pareja a un grupo (admin) ───────────────────────────────────────
+router.post('/:id/parejas', authenticate, param('id').notEmpty(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { parejaId } = req.body;
+    if (!parejaId) return res.status(400).json({ error: 'parejaId requerido' });
+
+    const grupo = await prisma.grupo.findUnique({
+      where: { id },
+      select: { campeonato: { select: { clubId: true } } },
+    });
+    if (!grupo) return res.status(404).json({ error: 'Grupo no encontrado' });
+
+    const esAdmin = req.user?.rol === 'ADMIN' || (req.user?.clubsAdmin || []).includes(grupo.campeonato?.clubId);
+    if (!esAdmin) return res.status(403).json({ error: 'No tienes permiso' });
+
+    const existe = await prisma.clasificacionGrupo.findUnique({
+      where: { grupoId_parejaId: { grupoId: id, parejaId } },
+    });
+    if (existe) return res.status(400).json({ error: 'La pareja ya está en este grupo' });
+
+    const clasificacion = await prisma.clasificacionGrupo.create({
+      data: {
+        grupoId: id, parejaId,
+        puntos: 0, partidosJugados: 0, partidosGanados: 0,
+        setsGanados: 0, setsPerdidos: 0, gamesGanados: 0, gamesPerdidos: 0,
+      },
+      include: {
+        pareja: {
+          include: {
+            jugador1: { include: { usuario: { select: { nombre: true } } } },
+            jugador2: { include: { usuario: { select: { nombre: true } } } },
+          },
+        },
+      },
+    });
+    res.status(201).json(clasificacion);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Quitar pareja de un grupo (admin) ───────────────────────────────────────
+router.delete('/:id/parejas/:parejaId', authenticate, param('id').notEmpty(), async (req, res) => {
+  try {
+    const { id, parejaId } = req.params;
+
+    const grupo = await prisma.grupo.findUnique({
+      where: { id },
+      select: { campeonato: { select: { clubId: true } } },
+    });
+    if (!grupo) return res.status(404).json({ error: 'Grupo no encontrado' });
+
+    const esAdmin = req.user?.rol === 'ADMIN' || (req.user?.clubsAdmin || []).includes(grupo.campeonato?.clubId);
+    if (!esAdmin) return res.status(403).json({ error: 'No tienes permiso' });
+
+    await prisma.clasificacionGrupo.delete({
+      where: { grupoId_parejaId: { grupoId: id, parejaId } },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ error: 'La pareja no está en este grupo' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
