@@ -90,7 +90,7 @@ export default function Ranking() {
               {[ranking[1], ranking[0], ranking[2]].map((r, visualIdx) => {
                 if (!r) return <div key={visualIdx} />;
                 const realIdx = visualIdx === 0 ? 1 : visualIdx === 1 ? 0 : 2;
-                const heights = ['h-28', 'h-36', 'h-24'];
+                const minHeights = ['min-h-28', 'min-h-36', 'min-h-24'];
                 const colors = [
                   'border-slate-300 bg-slate-50',
                   'border-yellow-300 bg-yellow-50',
@@ -99,11 +99,11 @@ export default function Ranking() {
                 return (
                   <div
                     key={r.parejaId}
-                    className={`flex flex-col items-center justify-end ${heights[visualIdx]} rounded-xl border-2 ${colors[visualIdx]} p-3 text-center transition-all`}
+                    className={`flex flex-col items-center justify-end ${minHeights[visualIdx]} rounded-xl border-2 ${colors[visualIdx]} p-3 text-center`}
                   >
                     <span className="text-2xl mb-1">{MEDALLAS[realIdx]}</span>
-                    <p className="text-xs font-bold text-slate-800 leading-tight line-clamp-2">
-                      {parejaLabel(r.pareja).replace(' / ', '\n/ ')}
+                    <p className="text-xs font-bold text-slate-800 leading-snug">
+                      {parejaLabel(r.pareja)}
                     </p>
                     <p className="text-sm font-bold text-blue-600 mt-1">{r.puntos} pts</p>
                   </div>
