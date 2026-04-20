@@ -77,11 +77,38 @@ function ordenLabel(p) {
   return null;
 }
 
-function PartidoRow({ p, onEditar, partidoEditando, sets, onSetsChange, onGuardar, onCancelar }) {
+function PartidoRow({ p, onEditar, partidoEditando, sets, onSetsChange, onGuardar, onCancelar, onRefresh }) {
   const editing = partidoEditando === p.id;
   const resultado = setsLabel(p);
   const fecha = formatDate(p.fechaHora);
   const oLabel = ordenLabel(p);
+
+  const [editandoHorario, setEditandoHorario] = useState(false);
+  const [fechaEdit, setFechaEdit] = useState('');
+  const [canchaEdit, setCanchaEdit] = useState('');
+  const [guardandoHorario, setGuardandoHorario] = useState(false);
+
+  const abrirEditHorario = () => {
+    // Convertir fechaHora ISO a valor para datetime-local
+    const val = p.fechaHora ? new Date(p.fechaHora).toISOString().slice(0, 16) : '';
+    setFechaEdit(val);
+    setCanchaEdit(p.pista || '');
+    setEditandoHorario(true);
+  };
+
+  const guardarHorario = async () => {
+    if (!fechaEdit) return;
+    setGuardandoHorario(true);
+    try {
+      await partidosApi.asignarHorario(p.id, new Date(fechaEdit).toISOString(), canchaEdit || null);
+      setEditandoHorario(false);
+      onRefresh();
+    } catch (err) {
+      alert(err.message || 'Error al guardar horario');
+    } finally {
+      setGuardandoHorario(false);
+    }
+  };
 
   // M2/M3 sin local todavía: mostrar como pendiente de M1
   const esperandoM1 = p.fase === 'GRUPOS' && p.ordenRonda > 1 && !p.parejaLocal && p.estado !== 'FINALIZADO';
@@ -99,10 +126,43 @@ function PartidoRow({ p, onEditar, partidoEditando, sets, onSetsChange, onGuarda
         {oLabel && <span className="text-xs text-slate-400 px-1">{oLabel}</span>}
       </div>
 
-      {fecha && (
-        <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 shrink-0">
-          {fecha}{p.pista ? ` · ${p.pista}` : ''}
-        </span>
+      {/* Horario: mostrar o editar */}
+      {editandoHorario ? (
+        <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+          <input
+            type="datetime-local"
+            value={fechaEdit}
+            onChange={(e) => setFechaEdit(e.target.value)}
+            className="text-xs border border-slate-300 rounded px-2 py-1"
+          />
+          <input
+            type="text"
+            value={canchaEdit}
+            onChange={(e) => setCanchaEdit(e.target.value)}
+            placeholder="Cancha 1"
+            className="text-xs border border-slate-300 rounded px-2 py-1 w-24"
+          />
+          <button onClick={guardarHorario} disabled={guardandoHorario}
+            className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50">
+            {guardandoHorario ? '...' : 'OK'}
+          </button>
+          <button onClick={() => setEditandoHorario(false)}
+            className="text-xs px-2 py-1 bg-slate-200 rounded hover:bg-slate-300">
+            ✕
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={abrirEditHorario}
+          className={`text-xs px-2 py-0.5 rounded border transition shrink-0 ${
+            fecha
+              ? 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'
+              : 'text-slate-400 border-dashed border-slate-300 hover:border-slate-400 hover:text-slate-600'
+          }`}
+          title="Editar horario"
+        >
+          {fecha ? `${fecha}${p.pista ? ` · ${p.pista}` : ''}` : '+ Asignar horario'}
+        </button>
       )}
 
       <div className="flex-1 flex flex-wrap items-start gap-3 min-w-0">
@@ -298,6 +358,18 @@ export default function AdminPartidos() {
     }
   };
 
+  const handleRegenerarPartidosGrupo = async (grupoId, grupoNombre) => {
+    if (!confirm(`¿Regenerar los partidos del grupo "${grupoNombre}"? Se borrarán los partidos actuales y se crearán nuevos.`)) return;
+    try {
+      const res = await gruposApi.regenerarPartidos(grupoId);
+      const p = await partidosApi.list({ campeonatoId: id });
+      setPartidos(p);
+      showMensaje(res.mensaje || 'Partidos regenerados.');
+    } catch (err) {
+      showMensaje(err.message || 'Error al regenerar partidos', 'error');
+    }
+  };
+
   if (loading || !campeonato) return <div className="text-slate-500">Cargando...</div>;
 
   const categorias = campeonato.categorias ?? [];
@@ -408,14 +480,25 @@ export default function AdminPartidos() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {grupos.map((grupo) => (
                 <div key={grupo.id} className="border border-slate-200 rounded-xl p-4 bg-white">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                     <h3 className="font-semibold text-slate-800">{grupo.nombre}</h3>
-                    <button
-                      onClick={() => handleEliminarGrupo(grupo.id, grupo.nombre)}
-                      className="text-xs text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50"
-                    >
-                      Eliminar grupo
-                    </button>
+                    <div className="flex gap-1 flex-wrap">
+                      {grupo.clasificaciones.length === 3 && (
+                        <button
+                          onClick={() => handleRegenerarPartidosGrupo(grupo.id, grupo.nombre)}
+                          className="text-xs text-blue-600 hover:text-blue-800 px-2 py-0.5 rounded hover:bg-blue-50 border border-blue-200"
+                          title="Borra los partidos del grupo y los regenera con las parejas actuales"
+                        >
+                          Regenerar partidos
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleEliminarGrupo(grupo.id, grupo.nombre)}
+                        className="text-xs text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50"
+                      >
+                        Eliminar grupo
+                      </button>
+                    </div>
                   </div>
 
                   {grupo.clasificaciones.length === 0 ? (
@@ -491,6 +574,7 @@ export default function AdminPartidos() {
                 sets={sets} onSetsChange={setSets}
                 onGuardar={() => handleGuardar(p.id)}
                 onCancelar={handleCancelar}
+                onRefresh={load}
               />
             ))}
           </div>
@@ -527,6 +611,7 @@ export default function AdminPartidos() {
                 sets={sets} onSetsChange={setSets}
                 onGuardar={() => handleGuardar(p.id)}
                 onCancelar={handleCancelar}
+                onRefresh={load}
               />
             ))}
           </div>

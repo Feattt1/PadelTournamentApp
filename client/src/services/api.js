@@ -180,6 +180,8 @@ export const gruposApi = {
     request(`/grupos/${grupoId}/parejas`, { method: 'POST', body: JSON.stringify({ parejaId }) }),
   quitarPareja: (grupoId, parejaId) =>
     request(`/grupos/${grupoId}/parejas/${parejaId}`, { method: 'DELETE' }),
+  regenerarPartidos: (grupoId) =>
+    request(`/grupos/${grupoId}/regenerar-partidos`, { method: 'POST' }),
 };
 
 export const jugadoresApi = {

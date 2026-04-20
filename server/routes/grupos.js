@@ -200,4 +200,51 @@ router.delete('/:id/parejas/:parejaId', authenticate, param('id').notEmpty(), as
   }
 });
 
+// ─── Regenerar partidos de un grupo (borra existentes y recrea) ──────────────
+router.post('/:id/regenerar-partidos', authenticate, param('id').notEmpty(), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const grupo = await prisma.grupo.findUnique({
+      where: { id },
+      select: {
+        campeonatoId: true,
+        categoriaId: true,
+        nombre: true,
+        campeonato: { select: { clubId: true } },
+        clasificaciones: { select: { parejaId: true } },
+      },
+    });
+    if (!grupo) return res.status(404).json({ error: 'Grupo no encontrado' });
+
+    const esAdmin = req.user?.rol === 'ADMIN' || (req.user?.clubsAdmin || []).includes(grupo.campeonato?.clubId);
+    if (!esAdmin) return res.status(403).json({ error: 'No tienes permiso' });
+
+    const ps = grupo.clasificaciones.map((c) => c.parejaId);
+    if (ps.length !== 3) {
+      return res.status(400).json({
+        error: `El grupo "${grupo.nombre}" tiene ${ps.length} pareja(s). Debe tener exactamente 3 para generar partidos.`,
+      });
+    }
+
+    const [p1, p2, p3] = ps;
+    const { campeonatoId, categoriaId } = grupo;
+
+    await prisma.$transaction([
+      prisma.partido.deleteMany({ where: { grupoId: id } }),
+      prisma.partido.createMany({
+        data: [
+          { campeonatoId, categoriaId, grupoId: id, fase: 'GRUPOS', ordenRonda: 1, estado: 'PENDIENTE', parejaLocalId: p1, parejaVisitanteId: p2 },
+          { campeonatoId, categoriaId, grupoId: id, fase: 'GRUPOS', ordenRonda: 2, estado: 'PENDIENTE', parejaLocalId: null, parejaVisitanteId: p3 },
+          { campeonatoId, categoriaId, grupoId: id, fase: 'GRUPOS', ordenRonda: 3, estado: 'PENDIENTE', parejaLocalId: null, parejaVisitanteId: p3 },
+        ],
+      }),
+    ]);
+
+    res.json({ ok: true, mensaje: `Partidos del grupo "${grupo.nombre}" regenerados.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
