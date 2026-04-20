@@ -32,6 +32,7 @@ async function request(path, options = {}) {
 
 export const clubsApi = {
   list: () => request('/clubs'),
+  ranking: (clubId, year) => request(`/clubs/${clubId}/ranking${year ? `?year=${year}` : ''}`),
   create: (nombre) => request('/clubs', { method: 'POST', body: JSON.stringify({ nombre }) }),
   assignAdmin: (clubId, emailOrUsuarioId) => {
     const body = typeof emailOrUsuarioId === 'string' && emailOrUsuarioId.includes('@')

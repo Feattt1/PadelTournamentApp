@@ -16,6 +16,7 @@ import AdminHorarios from './pages/admin/AdminHorarios';
 import AdminJugadores from './pages/admin/AdminJugadores';
 import AdminParejas from './pages/admin/AdminParejas';
 import AdminClubs from './pages/admin/AdminClubs';
+import Ranking from './pages/Ranking';
 import { useAuth } from './context/AuthContext';
 import { useClub } from './context/ClubContext';
 
@@ -73,6 +74,7 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="campeonatos" element={<Campeonatos />} />
         <Route path="campeonatos/:id" element={<CampeonatoDetalle />} />
+        <Route path="ranking" element={<Ranking />} />
 
         <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="register" element={<PublicRoute><Register /></PublicRoute>} />

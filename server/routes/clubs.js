@@ -117,6 +117,73 @@ router.delete('/:id', authenticate, requireAdmin, param('id').isUUID(), async (r
   }
 });
 
+// ─── Ranking anual del club ────────────────────────────────────────────────────
+// GET /clubs/:clubId/ranking?year=2026
+router.get('/:clubId/ranking', async (req, res) => {
+  try {
+    const { clubId } = req.params;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endOfYear   = new Date(`${year}-12-31T23:59:59.999Z`);
+
+    // Agrupa ClasificacionGrupo por pareja, sumando stats de todos los torneos del club en el año
+    const rows = await prisma.clasificacionGrupo.groupBy({
+      by: ['parejaId'],
+      where: {
+        grupo: {
+          campeonato: {
+            clubId,
+            fechaInicio: { gte: startOfYear, lte: endOfYear },
+          },
+        },
+      },
+      _sum: {
+        puntos: true,
+        partidosJugados: true,
+        partidosGanados: true,
+        setsGanados: true,
+        setsPerdidos: true,
+        gamesGanados: true,
+        gamesPerdidos: true,
+      },
+      _count: { grupoId: true }, // cuántos grupos (≈ torneos) participó
+      orderBy: [
+        { _sum: { puntos: 'desc' } },
+        { _sum: { setsGanados: 'desc' } },
+        { _sum: { gamesGanados: 'desc' } },
+      ],
+    });
+
+    // Enriquecer con datos de pareja
+    const parejaIds = rows.map((r) => r.parejaId);
+    const parejas = await prisma.pareja.findMany({
+      where: { id: { in: parejaIds } },
+      include: {
+        jugador1: { include: { usuario: { select: { nombre: true } } } },
+        jugador2: { include: { usuario: { select: { nombre: true } } } },
+      },
+    });
+    const parejaMap = Object.fromEntries(parejas.map((p) => [p.id, p]));
+
+    const ranking = rows.map((r) => ({
+      parejaId: r.parejaId,
+      pareja: parejaMap[r.parejaId] ?? null,
+      torneos: r._count.grupoId,
+      puntos:          r._sum.puntos          ?? 0,
+      partidosJugados: r._sum.partidosJugados ?? 0,
+      partidosGanados: r._sum.partidosGanados ?? 0,
+      setsGanados:     r._sum.setsGanados     ?? 0,
+      setsPerdidos:    r._sum.setsPerdidos    ?? 0,
+      gamesGanados:    r._sum.gamesGanados    ?? 0,
+      gamesPerdidos:   r._sum.gamesPerdidos   ?? 0,
+    }));
+
+    res.json({ year, clubId, ranking });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Crear club (admin plataforma)
 router.post('/', authenticate, requireAdmin, [
   body('nombre').trim().notEmpty(),

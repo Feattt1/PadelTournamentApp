@@ -86,6 +86,9 @@ export default function Layout() {
               <Link to="/campeonatos" className="text-white hover:text-yellow-400 transition font-medium text-sm">
                 Torneos
               </Link>
+              <Link to="/ranking" className="text-white hover:text-yellow-400 transition font-medium text-sm">
+                Ranking
+              </Link>
 
               {user ? (
                 <>
@@ -174,6 +177,9 @@ export default function Layout() {
             </Link>
             <Link to="/campeonatos" className="flex items-center gap-3 px-3 py-3 rounded-lg text-white hover:bg-slate-800 font-medium text-sm transition">
               🏆 Torneos
+            </Link>
+            <Link to="/ranking" className="flex items-center gap-3 px-3 py-3 rounded-lg text-white hover:bg-slate-800 font-medium text-sm transition">
+              🥇 Ranking
             </Link>
 
             {user ? (
