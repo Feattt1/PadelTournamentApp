@@ -316,10 +316,19 @@ export default function AdminPartidos() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
         <div>
-          <Link to="/admin/campeonatos" className="text-blue-600 hover:underline text-sm">
-            ← Volver a campeonatos
-          </Link>
-          <h1 className="text-xl sm:text-2xl font-bold mt-1">{campeonato.nombre}</h1>
+          <nav className="flex items-center gap-1.5 text-sm mb-2">
+            <Link to="/admin/campeonatos" className="text-blue-600 hover:underline font-medium">
+              Torneos
+            </Link>
+            <span className="text-slate-300">/</span>
+            <Link to={`/admin/campeonatos/${id}`} className="text-blue-600 hover:underline truncate max-w-[160px]">
+              {campeonato.nombre}
+            </Link>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-500">Partidos</span>
+          </nav>
+          <h1 className="text-xl sm:text-2xl font-bold">{campeonato.nombre}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Gestión de grupos, partidos y eliminatorias</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {hayCanchas && hayPartidosSinHorario && !categoriaActiva && (

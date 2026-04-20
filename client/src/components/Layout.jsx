@@ -80,6 +80,9 @@ export default function Layout() {
                 </div>
               )}
 
+              <Link to="/" className="text-white hover:text-yellow-400 transition font-medium text-sm">
+                Inicio
+              </Link>
               <Link to="/campeonatos" className="text-white hover:text-yellow-400 transition font-medium text-sm">
                 Torneos
               </Link>
@@ -166,6 +169,9 @@ export default function Layout() {
             )}
 
             {/* Nav links */}
+            <Link to="/" className="flex items-center gap-3 px-3 py-3 rounded-lg text-white hover:bg-slate-800 font-medium text-sm transition">
+              🏠 Inicio
+            </Link>
             <Link to="/campeonatos" className="flex items-center gap-3 px-3 py-3 rounded-lg text-white hover:bg-slate-800 font-medium text-sm transition">
               🏆 Torneos
             </Link>
