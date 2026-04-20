@@ -55,7 +55,7 @@ router.post('/', authenticate, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { campeonatoId, parejaId } = req.body;
+    const { campeonatoId, parejaId, categoriaId } = req.body;
     const campeonato = await prisma.campeonato.findUnique({
       where: { id: campeonatoId },
     });
@@ -79,7 +79,7 @@ router.post('/', authenticate, [
 
     const inscripcion = await prisma.$transaction(async (tx) => {
       const existe = await tx.inscripcion.findUnique({
-        where: { campeonatoId_parejaId: { campeonatoId, parejaId } },
+        where: { campeonatoId_parejaId_categoriaId: { campeonatoId, parejaId, categoriaId: categoriaId ?? null } },
       });
       if (existe) throw Object.assign(new Error('Esta pareja ya está inscrita'), { statusCode: 400 });
 
@@ -97,7 +97,7 @@ router.post('/', authenticate, [
       }
 
       return tx.inscripcion.create({
-        data: { campeonatoId, parejaId, estado, posicionLista },
+        data: { campeonatoId, parejaId, categoriaId: categoriaId ?? null, estado, posicionLista },
         include: {
           campeonato: { select: { nombre: true } },
           pareja: {

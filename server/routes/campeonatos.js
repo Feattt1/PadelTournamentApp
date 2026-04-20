@@ -637,6 +637,10 @@ router.post('/:id/partidos/eliminatorias', authenticate, setClubIdFromCampeonato
       }));
 
       const numGrupos = clasificados.length;
+      if (numGrupos === 0) {
+        return res.status(400).json({ error: 'No hay grupos generados. Primero generá los grupos y jugá la fase de grupos.' });
+      }
+
       const partidos = [];
       const catData = categoriaId ? { categoriaId } : {};
 
