@@ -133,6 +133,7 @@ router.put('/:id', authenticate, setClubIdFromCampeonato(), requireClubAdmin, [
   body('fechaInscripcionInicio').optional().isISO8601(),
   body('fechaInscripcionFin').optional().isISO8601(),
   body('estado').optional().isIn(['INSCRIPCIONES', 'EN_CURSO', 'FINALIZADO']),
+  body('imagenPortada').optional({ nullable: true }).trim(),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -140,7 +141,7 @@ router.put('/:id', authenticate, setClubIdFromCampeonato(), requireClubAdmin, [
 
     const { id } = req.params;
     const { nombre, descripcion, fechaInicio, fechaFin,
-            fechaInscripcionInicio, fechaInscripcionFin, estado } = req.body;
+            fechaInscripcionInicio, fechaInscripcionFin, estado, imagenPortada } = req.body;
 
     const data = {};
     if (nombre !== undefined) data.nombre = nombre;
@@ -150,6 +151,7 @@ router.put('/:id', authenticate, setClubIdFromCampeonato(), requireClubAdmin, [
     if (fechaInscripcionInicio !== undefined) data.fechaInscripcionInicio = fechaInscripcionInicio;
     if (fechaInscripcionFin !== undefined) data.fechaInscripcionFin = fechaInscripcionFin;
     if (estado !== undefined) data.estado = estado;
+    if (imagenPortada !== undefined) data.imagenPortada = imagenPortada || null;
 
     const campeonato = await prisma.campeonato.update({ where: { id }, data });
     res.json(campeonato);

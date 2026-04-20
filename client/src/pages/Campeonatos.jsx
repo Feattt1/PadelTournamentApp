@@ -76,13 +76,30 @@ export default function Campeonatos() {
               <Link
                 key={c.id}
                 to={`/campeonatos/${c.id}`}
-                className="group block bg-white rounded-xl border border-slate-200 hover:border-yellow-400 hover:shadow-md transition-all duration-200 overflow-hidden"
+                className="group block bg-white rounded-xl border border-slate-200 hover:border-slate-400 hover:shadow-lg transition-all duration-200 overflow-hidden"
               >
-                <div className="h-2 bg-gradient-to-r from-yellow-400 to-yellow-500" />
+                {/* Imagen de portada o gradiente */}
+                {c.imagenPortada ? (
+                  <div className="h-36 overflow-hidden relative">
+                    <img src={c.imagenPortada} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <span className={`absolute bottom-3 left-3 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                      c.estado === 'INSCRIPCIONES' ? 'bg-blue-500/80 text-white border-blue-400/30' :
+                      c.estado === 'EN_CURSO'      ? 'bg-green-500/80 text-white border-green-400/30' :
+                      'bg-slate-700/80 text-slate-200 border-slate-500/30'
+                    }`}>
+                      {ESTADOS[c.estado] ?? c.estado}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="h-2 bg-gradient-to-r from-yellow-400 to-yellow-500" />
+                )}
                 <div className="p-5">
-                  <span className={`inline-block px-2.5 py-0.5 rounded text-xs font-semibold mb-3 ${estadoBadge[c.estado] ?? estadoBadge.EN_CURSO}`}>
-                    {ESTADOS[c.estado] ?? c.estado}
-                  </span>
+                  {!c.imagenPortada && (
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold mb-3 ${estadoBadge[c.estado] ?? estadoBadge.EN_CURSO}`}>
+                      {ESTADOS[c.estado] ?? c.estado}
+                    </span>
+                  )}
                   <h3 className="font-bold text-slate-900 text-base mb-1 group-hover:text-yellow-600 transition line-clamp-2">
                     {c.nombre}
                   </h3>

@@ -38,7 +38,7 @@ export default function AdminCampeonatoEditar() {
   const esNuevo = !id || id === 'nuevo';
 
   const [form, setForm] = useState({
-    nombre: '', descripcion: '',
+    nombre: '', descripcion: '', imagenPortada: '',
     fechaInicio: '', fechaFin: '',
     fechaInscripcionInicio: '', fechaInscripcionFin: '',
     estado: 'INSCRIPCIONES',
@@ -70,6 +70,7 @@ export default function AdminCampeonatoEditar() {
           fechaInscripcionInicio: c.fechaInscripcionInicio ? c.fechaInscripcionInicio.slice(0, 16) : '',
           fechaInscripcionFin: c.fechaInscripcionFin ? c.fechaInscripcionFin.slice(0, 16) : '',
           estado: c.estado ?? 'INSCRIPCIONES',
+          imagenPortada: c.imagenPortada ?? '',
         });
         setCategorias(c.categorias ?? []);
       })
@@ -312,6 +313,20 @@ export default function AdminCampeonatoEditar() {
               placeholder="Descripción opcional..."
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm resize-none"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Imagen de portada (URL)</label>
+            <input
+              name="imagenPortada" type="url" value={form.imagenPortada} onChange={handleChange}
+              placeholder="https://ejemplo.com/imagen.jpg"
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm"
+            />
+            {form.imagenPortada && (
+              <div className="mt-2 rounded-lg overflow-hidden h-24 bg-slate-100">
+                <img src={form.imagenPortada} alt="Portada" className="w-full h-full object-cover" onError={(e) => e.target.style.display='none'} />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

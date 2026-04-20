@@ -123,7 +123,8 @@ model Campeonato {
   fechaFin    DateTime
   fechaInscripcionInicio DateTime?
   fechaInscripcionFin    DateTime?
-  estado      EstadoCampeonato @default(INSCRIPCIONES)
+  estado         EstadoCampeonato @default(INSCRIPCIONES)
+  imagenPortada  String?
   creadorId   String?
   club        Club?            @relation(fields: [clubId], references: [id], onDelete: SetNull)
   creador     Usuario?         @relation("CreadorCampeonato", fields: [creadorId], references: [id])
