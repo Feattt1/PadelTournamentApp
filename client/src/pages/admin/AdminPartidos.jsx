@@ -253,6 +253,30 @@ export default function AdminPartidos() {
     }
   };
 
+  const handleCrearGrupo = async () => {
+    const nextLetra = String.fromCharCode(65 + grupos.length);
+    const nombre = prompt('Nombre del grupo:', `Grupo ${nextLetra}`);
+    if (!nombre?.trim()) return;
+    try {
+      await gruposApi.crear(id, categoriaActiva, nombre.trim());
+      await loadGrupos(categoriaActiva);
+      showMensaje('Grupo creado.');
+    } catch (err) {
+      showMensaje(err.message || 'Error al crear grupo', 'error');
+    }
+  };
+
+  const handleEliminarGrupo = async (grupoId, grupoNombre) => {
+    if (!confirm(`¿Eliminar "${grupoNombre}"? Se borrarán sus partidos y clasificaciones.`)) return;
+    try {
+      await gruposApi.eliminar(grupoId);
+      await loadGrupos(categoriaActiva);
+      showMensaje('Grupo eliminado.');
+    } catch (err) {
+      showMensaje(err.message || 'Error al eliminar grupo', 'error');
+    }
+  };
+
   const handleAgregarPareja = async (grupoId) => {
     const parejaId = seleccionEnGrupo[grupoId];
     if (!parejaId) return;
@@ -360,11 +384,27 @@ export default function AdminPartidos() {
         const disponibles = inscripciones.filter((i) => !parejasEnGrupos.has(i.parejaId));
         return (
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Grupos</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Grupos</h2>
+              <button
+                onClick={handleCrearGrupo}
+                className="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500"
+              >
+                + Nuevo grupo
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {grupos.map((grupo) => (
                 <div key={grupo.id} className="border border-slate-200 rounded-xl p-4 bg-white">
-                  <h3 className="font-semibold text-slate-800 mb-3">{grupo.nombre}</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-slate-800">{grupo.nombre}</h3>
+                    <button
+                      onClick={() => handleEliminarGrupo(grupo.id, grupo.nombre)}
+                      className="text-xs text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50"
+                    >
+                      Eliminar grupo
+                    </button>
+                  </div>
 
                   {grupo.clasificaciones.length === 0 ? (
                     <p className="text-xs text-slate-400 mb-3 italic">Sin parejas asignadas</p>

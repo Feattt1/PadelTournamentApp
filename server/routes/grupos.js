@@ -71,6 +71,69 @@ router.get('/:id', param('id').notEmpty(), async (req, res) => {
   }
 });
 
+// ─── Crear grupo manualmente (admin) ─────────────────────────────────────────
+router.post('/', authenticate, async (req, res) => {
+  try {
+    const { campeonatoId, categoriaId, nombre } = req.body;
+    if (!campeonatoId || !nombre?.trim()) {
+      return res.status(400).json({ error: 'campeonatoId y nombre son requeridos' });
+    }
+
+    const campeonato = await prisma.campeonato.findUnique({
+      where: { id: campeonatoId },
+      select: { clubId: true },
+    });
+    if (!campeonato) return res.status(404).json({ error: 'Campeonato no encontrado' });
+
+    const esAdmin = req.user?.rol === 'ADMIN' || (req.user?.clubsAdmin || []).includes(campeonato.clubId);
+    if (!esAdmin) return res.status(403).json({ error: 'No tienes permiso' });
+
+    const grupo = await prisma.grupo.create({
+      data: { campeonatoId, categoriaId: categoriaId ?? null, nombre: nombre.trim() },
+      include: {
+        clasificaciones: {
+          include: {
+            pareja: {
+              include: {
+                jugador1: { include: { usuario: { select: { nombre: true } } } },
+                jugador2: { include: { usuario: { select: { nombre: true } } } },
+              },
+            },
+          },
+        },
+      },
+    });
+    res.status(201).json(grupo);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Eliminar grupo (admin) — borra también sus partidos ─────────────────────
+router.delete('/:id', authenticate, param('id').notEmpty(), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const grupo = await prisma.grupo.findUnique({
+      where: { id },
+      select: { campeonato: { select: { clubId: true } } },
+    });
+    if (!grupo) return res.status(404).json({ error: 'Grupo no encontrado' });
+
+    const esAdmin = req.user?.rol === 'ADMIN' || (req.user?.clubsAdmin || []).includes(grupo.campeonato?.clubId);
+    if (!esAdmin) return res.status(403).json({ error: 'No tienes permiso' });
+
+    await prisma.$transaction([
+      prisma.partido.deleteMany({ where: { grupoId: id } }),
+      prisma.grupo.delete({ where: { id } }),
+    ]);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Grupo no encontrado' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Agregar pareja a un grupo (admin) ───────────────────────────────────────
 router.post('/:id/parejas', authenticate, param('id').notEmpty(), async (req, res) => {
   try {

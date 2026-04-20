@@ -172,6 +172,10 @@ export const gruposApi = {
     return request(`/grupos?${q}`);
   },
   get: (id) => request(`/grupos/${id}`),
+  crear: (campeonatoId, categoriaId, nombre) =>
+    request('/grupos', { method: 'POST', body: JSON.stringify({ campeonatoId, categoriaId: categoriaId ?? null, nombre }) }),
+  eliminar: (grupoId) =>
+    request(`/grupos/${grupoId}`, { method: 'DELETE' }),
   agregarPareja: (grupoId, parejaId) =>
     request(`/grupos/${grupoId}/parejas`, { method: 'POST', body: JSON.stringify({ parejaId }) }),
   quitarPareja: (grupoId, parejaId) =>
