@@ -13,7 +13,8 @@ function formatDate(d) {
   });
 }
 
-// Genera todos los slots posibles a partir de las DisponibilidadHoraria del torneo
+// Genera todos los slots posibles a partir de las DisponibilidadHoraria del torneo.
+// Usa setUTCHours para que las keys coincidan con los tiempos que guarda el servidor (que corre en UTC).
 function generarSlots(disponibilidades = []) {
   const slots = [];
   for (const disp of disponibilidades) {
@@ -25,14 +26,14 @@ function generarSlots(disponibilidades = []) {
     while (min + dur <= minFin) {
       for (let c = 1; c <= disp.cantidadCanchas; c++) {
         const fechaHora = new Date(disp.fecha);
-        fechaHora.setHours(Math.floor(min / 60), min % 60, 0, 0);
+        fechaHora.setUTCHours(Math.floor(min / 60), min % 60, 0, 0);
         const canchaLabel = `Cancha ${c}`;
         slots.push({
           key: `${fechaHora.toISOString()}|${canchaLabel}`,
           fechaHora,
           cancha: canchaLabel,
-          fechaLabel: fechaHora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }),
-          horaLabel: fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          fechaLabel: new Date(disp.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }),
+          horaLabel: `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`,
         });
       }
       min += dur;
@@ -139,7 +140,10 @@ function PartidoRow({ p, onEditar, partidoEditando, sets, onSetsChange, onGuarda
   }
 
   const abrirEditHorario = () => {
-    setSlotSel(miSlotKey || '');
+    // Si la key del partido no está en las opciones disponibles (ej. desfase de zona horaria
+    // en partidos viejos), inicializar en '' para que display y estado coincidan.
+    const keyExiste = (allSlots || []).some((s) => s.key === miSlotKey);
+    setSlotSel(keyExiste ? (miSlotKey || '') : '');
     setEditandoHorario(true);
   };
 
