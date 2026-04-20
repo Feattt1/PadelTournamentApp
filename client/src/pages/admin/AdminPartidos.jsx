@@ -379,7 +379,7 @@ export default function AdminPartidos() {
       )}
 
       {/* Gestión de grupos — solo cuando hay categoría activa y grupos creados */}
-      {categoriaActiva && grupos.length > 0 && (() => {
+      {categoriaActiva && (() => {
         const parejasEnGrupos = new Set(grupos.flatMap((g) => g.clasificaciones.map((c) => c.parejaId)));
         const disponibles = inscripciones.filter((i) => !parejasEnGrupos.has(i.parejaId));
         return (
@@ -393,6 +393,9 @@ export default function AdminPartidos() {
                 + Nuevo grupo
               </button>
             </div>
+            {grupos.length === 0 && (
+              <p className="text-slate-500 text-sm mb-4">No hay grupos. Usá "+ Nuevo grupo" para crear uno.</p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {grupos.map((grupo) => (
                 <div key={grupo.id} className="border border-slate-200 rounded-xl p-4 bg-white">
